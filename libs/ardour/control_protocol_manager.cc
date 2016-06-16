@@ -436,6 +436,8 @@ ControlProtocolManager::set_state (const XMLNode& node, int /*version*/)
 			if (cpi) {
 				cpi->state = new XMLNode (**citer);
 
+				std::cerr << "protocol " << prop->value() << " active ? " << active << std::endl;
+
 				if (active) {
 					if (_session) {
 						instantiate (*cpi);
@@ -449,6 +451,8 @@ ControlProtocolManager::set_state (const XMLNode& node, int /*version*/)
 						cpi->requested = false;
 					}
 				}
+			} else {
+				std::cerr << "protocol " << prop->value() << " not found\n";
 			}
 		}
 	}
