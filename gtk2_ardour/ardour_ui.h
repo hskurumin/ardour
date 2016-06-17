@@ -887,6 +887,7 @@ private:
 	void step_down_through_tabs ();
 
 	void escape ();
+	void close_current_dialog ();
 	void pre_release_dialog ();
 };
 
