@@ -75,8 +75,12 @@ PluginEqGui::PluginEqGui(boost::shared_ptr<ARDOUR::PluginInsert> pluginInsert)
 	_analysis_height = 256.0;
 	_analysis_area->set_size_request(_analysis_width, _analysis_height);
 
+	_analysis_area->add_events(Gdk::EventMask::POINTER_MOTION_MASK | Gdk::EventMask::LEAVE_NOTIFY_MASK);
+
 	_analysis_area->signal_expose_event().connect( sigc::mem_fun (*this, &PluginEqGui::expose_analysis_area));
 	_analysis_area->signal_size_allocate().connect( sigc::mem_fun (*this, &PluginEqGui::resize_analysis_area));
+	_analysis_area->signal_motion_notify_event().connect( sigc::mem_fun (*this, &PluginEqGui::analysis_area_mouseover));
+	_analysis_area->signal_leave_notify_event().connect( sigc::mem_fun (*this, &PluginEqGui::analysis_area_mouseexit));
 
 	// dB selection
 	dBScaleModel = Gtk::ListStore::create(dBColumns);
@@ -117,10 +121,15 @@ PluginEqGui::PluginEqGui(boost::shared_ptr<ARDOUR::PluginInsert> pluginInsert)
 	_phase_button->set_active(true);
 	_phase_button->signal_toggled().connect( sigc::mem_fun(*this, &PluginEqGui::redraw_scales));
 
+	// Freq/dB info for mouse over
+	_pointer_info = new Gtk::Label ("", 1, 0.5);
+	_pointer_info->set_size_request(_analysis_width / 4, -1);
+
 	// populate table
-	attach( *manage(_analysis_area), 1, 3, 1, 2);
+	attach( *manage(_analysis_area), 1, 4, 1, 2);
 	attach( *manage(dBSelectBin),    1, 2, 2, 3, Gtk::SHRINK, Gtk::SHRINK);
-	attach( *manage(_phase_button),	 2, 3, 2, 3, Gtk::SHRINK, Gtk::SHRINK);
+	attach( *manage(_phase_button),  2, 3, 2, 3, Gtk::SHRINK, Gtk::SHRINK);
+	attach( *manage(_pointer_info),  3, 4, 2, 3, Gtk::FILL, Gtk::SHRINK);
 }
 
 PluginEqGui::~PluginEqGui()
@@ -287,6 +296,8 @@ PluginEqGui::resize_analysis_area (Gtk::Allocation& size)
 		cairo_surface_destroy (_analysis_scale_surface);
 		_analysis_scale_surface = 0;
 	}
+
+	_pointer_info->set_size_request(_analysis_width / 4, -1);
 }
 
 bool
@@ -425,6 +436,23 @@ PluginEqGui::run_impulse_analysis()
 
 	ARDOUR_UI::instance()->drop_process_buffers ();
 }
+
+bool
+PluginEqGui::analysis_area_mouseover(GdkEventMotion *event)
+{
+	int freq = (int) ((powf(10, event->x / _analysis_width * _log_max) - 1) * _samplerate / 2.0 / _log_coeff);
+	float dB = roundf((_max_dB - event->y / _analysis_height * ( _max_dB - _min_dB )) * 10) / 10;
+	_pointer_info->set_text(string_compose(_("%1Hz / %2dB"), freq, dB));
+	return true;
+}
+
+bool
+PluginEqGui::analysis_area_mouseexit(GdkEventCrossing *)
+{
+	_pointer_info->set_text("");
+	return true;
+}
+
 
 bool
 PluginEqGui::expose_analysis_area(GdkEventExpose *)
